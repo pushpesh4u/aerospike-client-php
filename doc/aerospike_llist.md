@@ -12,21 +12,26 @@ capable of growing the collection to virtually any size.
     public __construct ( Aerospike $db, array $key, string $bin )
     public int add ( int|string|array $value )
     public int addMany ( array $values )
+    public int update ( int|string|array $value )
+    public int updateMany ( array $values )
+    public int exists ( int|string $value, boolean &$res )
     public int find ( int|string $value, array &$elements )
+    public int findFirst ( int $count, array &$elements )
+    public int findLast ( int $count, array &$elements )
+    public int findRange ( int|string|null $min, int|string|null $max, array &$elements )
+    public int scan ( array &$elements [, string $module=null [, string $function=null [, array $args=array()]]] )
     public int remove ( int|string $value )
-    public int scan ( array &$elements [, int|string $min = null [, int|string $max = null]] )
-
-    // To be implemented:
-    // public int filter ( string $module, string $function, array $args, array &$elements [, int|string $min = null [, int|string $max = null ]] )
+    public int removeRange ( int|string|null $min, int|string|null $max )
+    public int removeMany ( array $values )
 
     /* Inherited Methods */
     public boolean isLDT ( void )
+    public boolean isValid ( void )
     public string error ( void )
     public int errorno ( void )
     public int size ( int &$num_elements )
+    public int config ( array &$config )
     public int destroy ( void )
-    public int getCapacity ( int &$num_elements )
-    public int setCapacity ( int $num_elements )
 }
 ```
 

@@ -146,6 +146,8 @@ class Aerospike
     // Query Predicate Operators
     const string OP_EQ = '=';
     const string OP_BETWEEN = 'BETWEEN';
+    const string OP_CONTAINS = 'CONTAINS';
+    const string OP_RANGE = 'RANGE';
 
     // Multi-operation operators map to the C client
     //  src/include/aerospike/as_operations.h
@@ -159,10 +161,14 @@ class Aerospike
     // UDF types
     const UDF_TYPE_LUA;
 
-    // bin types
-    const INDEX_TYPE_STRING;
-    const INDEX_TYPE_INTEGER;
-
+    // index types
+    const INDEX_TYPE_DEFAULT;   // index records where the bin contains an atomic (string, integer) type
+    const INDEX_TYPE_LIST;      // index records where the bin contains a list
+    const INDEX_TYPE_MAPKEYS;   // index the keys of records whose specified bin is a map
+    const INDEX_TYPE_MAPVALUES; // index the values of records whose specified bin is a map
+    // data type
+    const INDEX_STRING;  // if the index type is matched, regard values of type string
+    const INDEX_NUMERIC; // if the index type is matched, regard values of type integer
 
     // lifecycle and connection methods
     public __construct ( array $config [,  boolean $persistent_connection = true [, array $options]] )
@@ -179,13 +185,14 @@ class Aerospike
 
     // key-value methods
     public array initKey ( string $ns, string $set, int|string $pk [, boolean $is_digest = false ] )
+    public string getKeyDigest ( string $ns, string $set, int|string $pk )
     public int put ( array $key, array $bins [, int $ttl = 0 [, array $options ]] )
     public int get ( array $key, array &$record [, array $filter [, array $options ]] )
     public int exists ( array $key, array &$metadata [, array $options ] )
     public int touch ( array $key, int $ttl = 0 [, array $options ] )
     public int remove ( array $key [, array $options ] )
     public int removeBin ( array $key, array $bins [, array $options ] )
-    public int increment ( array $key, string $bin, int $offset [, int $initial_value = 0 [, array $options ]] )
+    public int increment ( array $key, string $bin, int $offset [, array $options ] )
     public int append ( array $key, string $bin, string $value [, array $options ] )
     public int prepend ( array $key, string $bin, string $value [, array $options ] )
     public int operate ( array $key, array $operations [, array &$returned ] )
@@ -213,9 +220,11 @@ class Aerospike
     public int scan ( string $ns, string $set, callback $record_cb [, array $select [, array $options ]] )
     public array predicateEquals ( string $bin, int|string $val )
     public array predicateBetween ( string $bin, int $min, int $max )
+    public array predicateContains ( string $bin, int $index_type, int|string $val )
+    public array predicateRange ( string $bin, int $index_type, int $min, int $max )
 
     // admin methods
-    public int createIndex ( string $ns, string $set, string $bin, int $type, string $name [, array $options ] )
+    public int addIndex ( string $ns, string $set, string $bin, string $name, int $index_type, int $data_type [, array $options ] )
     public int dropIndex ( string $ns, string $name [, array $options ] )
 
     // info methods

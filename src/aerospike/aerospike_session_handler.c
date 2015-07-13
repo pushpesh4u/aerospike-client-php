@@ -278,7 +278,7 @@ PS_READ_FUNC(aerospike)
     }
 
     if (NULL == (session_data_p = as_record_get_str(record_p, AEROSPIKE_SESSION_BIN))) {
-         PHP_EXT_SET_AS_ERR(&error, AEROSPIKE_ERR,
+         PHP_EXT_SET_AS_ERR(&error, AEROSPIKE_ERR_CLIENT,
                     "Unable to get session bin of the record");
          DEBUG_PHP_EXT_DEBUG("Unable to get session bin of the record");
          goto exit;
@@ -292,6 +292,9 @@ exit:
         as_key_destroy(&key_get);
     }
 
+    if (record_p) {
+        as_record_destroy(record_p);
+    }
     return (error.code == AEROSPIKE_OK) ? SUCCESS : FAILURE;
 }
 

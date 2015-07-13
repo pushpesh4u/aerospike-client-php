@@ -101,6 +101,32 @@ class Scan extends AerospikeTestCommon
     }
     /**
      * @test
+     * Scan with correct arguments and set NULL
+     *
+     * @pre
+     * Connect using aerospike object to the specified node
+     *
+     * @post
+     * newly initialized Aerospike objects
+     *
+     * @remark
+     * Variants: OO (testScanWithCorrectArgumentsAndSetNull)
+     *
+     * @test_plans{1.1}
+     */
+    function testScanWithCorrectArgumentsAndSetNull()
+    {
+        $processed = 0;
+        $status = $this->db->scan( "test", null, function ($record) use (&$processed, &$db) {
+            $processed++;
+        }, array("email"), array(Aerospike::OPT_READ_TIMEOUT=>0));
+        if ($status !== Aerospike::OK || $processed < 1) {
+            return Aerospike::ERR_CLIENT;
+        }
+        return Aerospike::OK;
+    }
+    /**
+     * @test
      * Basic SCAN Check incorrect name of bins
      *
      * @pre
@@ -165,12 +191,12 @@ class Scan extends AerospikeTestCommon
             if (array_key_exists("account", $record["bins"]) &&
                 !is_null($record["bins"]["account"]))
                 echo $record["bins"]["email"]."\n";
-            if ((!strcmp($record["bins"]["email"], "smith")) ||
-                (!strcmp($record["bins"]["email"], "john"))) {
+            if (array_key_exists("email", $record["bins"]) && ((!strcmp($record["bins"]["email"], "smith")) ||
+                (!strcmp($record["bins"]["email"], "john")))) {
                     $processed++;
                 } else {
                     return Aerospike::ERR_CLIENT;
-            }
+                }
             if ($processed == 2) {
                 $key = $db->initKey("test", "demo", "testing");
                 $db->put($key, array("bin1"=>10));
@@ -236,7 +262,7 @@ class Scan extends AerospikeTestCommon
      */
     function testCheckIncorrectValueForOptions()
     {
-        return($this->db->scan( "test", "demo", function ($record) use (&$processed) {
+        $status = $this->db->scan( "test", "demo", function ($record) use (&$processed) {
             if (array_key_exists("account", $record["bins"]) &&
                 !is_null($record["bins"]["account"])) {
                     echo $record["bins"]["email"]."\n";
@@ -244,7 +270,11 @@ class Scan extends AerospikeTestCommon
             if ($processed++ > 19) {
                 return false;
             }
-        }, array("email"), array(Aerospike::OPT_SCAN_NOBINS=>false, Aerospike::OPT_READ_TIMEOUT=>"pqr")));
+        }, array("email"), array(Aerospike::OPT_SCAN_NOBINS=>false, Aerospike::OPT_READ_TIMEOUT=>"pqr"));
+        if ($status !== aerospike::OK) {
+            return $this->db->errorno();
+        }
+        return aerospike::OK;
     }
     /**
      * @test
@@ -306,7 +336,7 @@ class Scan extends AerospikeTestCommon
                         return Aerospike::OK;
                     }
                 } else {
-                    return(AEROSPIKE::ERR);
+                    return AEROSPIKE::ERR_CLIENT;
                 }
         }, array("email"), array(Aerospike::OPT_READ_TIMEOUT=>2000));
         $key = $this->db->initKey("test", "demo", "testing");

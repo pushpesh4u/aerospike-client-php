@@ -214,7 +214,15 @@
 #define AS_DEFAULT_KEY(hashtable, key, key_len, index, pointer,                \
         static_pool, err, label)                                               \
             zend_hash_get_current_key_ex(hashtable, (char **)&key, &key_len,   \
-                    &index, 0, &pointer);
+                    &index, 0, &pointer);                                      \
+            if ((char*)key == NULL) {                                          \
+                err->code = AEROSPIKE_ERR_CLIENT;                              \
+                goto label;                                                    \
+            }                                                                  \
+            if (key_len > (AS_BIN_NAME_MAX_LEN + 1)) {                         \
+                PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR_BIN_NAME, "Bin name longer than 14 chars");   \
+                goto label;                                                    \
+            }
 
 #define AS_LIST_KEY(hashtable, key, key_len, index, pointer, static_pool,      \
         err, label)                                                            \
@@ -236,7 +244,7 @@ do {                                                                           \
         as_integer_init(map_int, index);                                       \
         key = (as_val*) map_int;                                               \
     } else {                                                                   \
-        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR, "Invalid Key type for Map");    \
+        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR_CLIENT, "Invalid Key type for Map");    \
         goto label;                                                            \
     }                                                                          \
 } while(0);
@@ -286,7 +294,7 @@ do {                                                                           \
     if (AS_MAX_STORE_SIZE > STR_CNT(static_pool)) {                            \
         map_str = &(STR_POOL(static_pool)[STR_CNT(static_pool)++]);            \
     } else {                                                                   \
-        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR, "Cannot allocate as_string");   \
+        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR_CLIENT, "Cannot allocate as_string");   \
         goto label;                                                            \
     }
 
@@ -294,7 +302,7 @@ do {                                                                           \
     if (AS_MAX_STORE_SIZE > INT_CNT(static_pool)) {                            \
         map_int = &(INT_POOL(static_pool)[INT_CNT(static_pool)++]);            \
     } else {                                                                   \
-        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR, "Cannot allocate as_integer");  \
+        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR_CLIENT, "Cannot allocate as_integer");  \
         goto label;                                                            \
     }
 
@@ -302,7 +310,7 @@ do {                                                                           \
     if (AS_MAX_STORE_SIZE > BYTES_CNT(static_pool)) {                          \
         map_bytes = &(BYTES_POOL(static_pool)[BYTES_CNT(static_pool)++]);      \
     } else {                                                                   \
-        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR, "Cannot allocate as_bytes");    \
+        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR_CLIENT, "Cannot allocate as_bytes");    \
         goto label;                                                            \
     }
 
@@ -321,7 +329,7 @@ do {                                                                           \
         (CURRENT_##level##_SIZE(static_pool))++];                              \
         INIT_##level##_IN_POOL(store, hashtable);                              \
     } else {                                                                   \
-        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR, "Cannot allocate list/map");    \
+        PHP_EXT_SET_AS_ERR(err, AEROSPIKE_ERR_CLIENT, "Cannot allocate list/map");    \
         goto label;                                                            \
     }
 

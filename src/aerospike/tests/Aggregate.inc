@@ -26,7 +26,8 @@ class Aggregate extends AerospikeTestCommon
         $key = $this->db->initKey("test", "demo", "Get_key3");
         $this->db->put($key,array("first_name"=>"ellie", "age"=>32));
         $this->keys[] = $key;
-        $this->ensureIndex('test', 'demo', 'age', 'demo_age_idx', Aerospike::INDEX_TYPE_INTEGER);
+
+        $this->ensureIndex('test', 'demo', 'age', 'demo_age_idx', Aerospike::INDEX_TYPE_DEFAULT, Aerospike::INDEX_NUMERIC);
     }
 
     /**
@@ -60,10 +61,47 @@ class Aggregate extends AerospikeTestCommon
                     array_key_exists("adam", $returned["bins"])) {
                         return Aerospike::OK;
                     } else {
-                        return Aerospike::ERR;
+                        return Aerospike::ERR_CLIENT;
                     }
             }
     }
+
+    /**
+     * @test
+     * Scan Aggregate - empty predicate
+     *
+     * @pre
+     * Connect using aerospike object to the specified node
+     *
+     * @post
+     * newly initialized Aerospike objects
+     *
+     * @remark
+     * Variants: OO (testScanAggregation)
+     *
+     * @test_plans{1.1}
+     */
+    function testScanAggregation()
+    {
+        return Aerospike::ERR_CLIENT; // wait on AER-3813
+        $this->ensureUdfModule("tests/lua/test_stream.lua", "test_stream.lua");
+        $where = array();
+        $status = $this->db->aggregate("test", "demo", $where, "test_stream", "group_count", array("first_name"), $returned);
+        if ($status != Aerospike::OK) {
+            return($this->db->errorno());
+        }
+        if ($isset($returned["bins"]) && is_array($returned["bins"])) {
+                if (array_key_exists("john", $returned["bins"]) &&
+                    array_key_exists("smith", $returned["bins"]) &&
+                    array_key_exists("ellie", $returned["bins"]) &&
+                    array_key_exists("adam", $returned["bins"])) {
+                        return Aerospike::OK;
+                    } else {
+                        return Aerospike::ERR_CLIENT;
+                    }
+            }
+    }
+
     /**
      * @test
      * Aggregate - first name of emp where age in between
@@ -95,7 +133,7 @@ class Aggregate extends AerospikeTestCommon
                     array_key_exists("adam", $returned["bins"])) {
                         return Aerospike::OK;
                     } else {
-                        return Aerospike::ERR;
+                        return Aerospike::ERR_CLIENT;
                     }
             }
     }
@@ -152,7 +190,7 @@ class Aggregate extends AerospikeTestCommon
         if (empty($names["bins"])) {
             return Aerospike::OK;
         }
-        return Aerospike::ERR;
+        return Aerospike::ERR_CLIENT;
     }
     /**
      * @test
@@ -372,7 +410,7 @@ class Aggregate extends AerospikeTestCommon
                     array_key_exists("adam", $returned["bins"])) {
                         return Aerospike::OK;
                     } else {
-                        return Aerospike::ERR;
+                        return Aerospike::ERR_CLIENT;
                     }
             }
     }
@@ -403,7 +441,7 @@ class Aggregate extends AerospikeTestCommon
                     array_key_exists("adam", $returned["bins"])) {
                         return Aerospike::OK;
                     } else {
-                        return Aerospike::ERR;
+                        return Aerospike::ERR_CLIENT;
                     }
             }
     }
@@ -427,6 +465,9 @@ class Aggregate extends AerospikeTestCommon
         $this->ensureUdfModule("tests/lua/test_aggregate_less_parameter.lua", "test_aggregate_less_parameter.lua");
         $where = $this->db->predicateBetween("age", 20, 29);
         $status = $this->db->aggregate("test", "demo", $where, "test_aggregate_less_parameter", "group_count", array("first_name"), $returned);
+        if ($status != Aerospike::OK) {
+            return($status);
+        }
         if (strcmp("test", $returned["key"]["ns"]) == 0 && strcmp("demo",
             $returned["key"]["set"]) == 0) {
                 if (array_key_exists("john", $returned["bins"]) &&
@@ -434,7 +475,7 @@ class Aggregate extends AerospikeTestCommon
                     array_key_exists("adam", $returned["bins"])) {
                         return Aerospike::OK;
                     } else {
-                        return Aerospike::ERR;
+                        return Aerospike::ERR_CLIENT;
                     }
             }
     }

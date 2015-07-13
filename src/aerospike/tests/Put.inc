@@ -2045,7 +2045,7 @@ function testMixedTypesWithDefaultSerializer()
              $comp_res = array_diff_assoc_recursive($put_record,
                  $get_record["bins"]);
              if(!empty($comp_res)) {
-                 return AEROSPIKE::ERR;
+                 return AEROSPIKE::ERR_CLIENT;
              }
          }
      return  $status;
@@ -2095,7 +2095,7 @@ function testMixedTypesWithDefaultSerializer()
              $comp_res = array_diff_assoc_recursive($put_record,
                  $get_record["bins"]);
              if(!empty($comp_res)) {
-                 return AEROSPIKE::ERR;
+                 return AEROSPIKE::ERR_CLIENT;
              }
          }
      return  $status;
@@ -2510,7 +2510,7 @@ function testMixedTypesWithDefaultSerializer()
          return $get_status;
      }
      $this->keys[] = $key;
-     if ($record['key']['key'] != 'policy_key_send_test') return Aerospike::ERR;
+     if ($record['key']['key'] != 'policy_key_send_test') return Aerospike::ERR_CLIENT;
      return $get_status;
  }
 /**
@@ -2694,9 +2694,9 @@ function testMixedTypesWithDefaultSerializer()
     {
         $key = array("ns"=>"test", "set"=>"demo",
             "key"=>"test_null_data_mixed_positive");
-        $put_record = array('my_data' => array(1, ['age' => 20,
+        $put_record = array('my_data' => array(1, array('age' => 20,
             'job' => NULL, 'salary' => NULL,
-            'qualifications' => ['B.Tech', 'M.Tech', NULL]],
+            'qualifications' => array('B.Tech', 'M.Tech', NULL)),
             'hello', NULL), 'no_data' => NULL); 
         $status = $this->db->put($key, $put_record);
         $this->keys[] = $key;
@@ -2709,6 +2709,31 @@ function testMixedTypesWithDefaultSerializer()
             return Aerospike::ERR_RECORD_NOT_FOUND;
         }
         return $status;
+    }
+
+    /**
+     * @test
+     * Basic PUT with bin name exceeding 14 characters limit.
+     *
+     * @pre
+     * Connect using aerospike object to the specified node
+     *
+     * @post
+     * newly initialized Aerospike objects
+     *
+     * @remark
+     * Variants: OO (testPUT)
+     *
+     * @test_plans{1.1}
+     */
+    function testPutBinNameExceedingMaxlimit()
+    {
+        $key = $this->db->initKey("test", "demo", "put_test");
+        $status = $this->db->put($key,  array("bin456789012345"=>"Hello World"));
+        $this->keys[] = $key;
+        if ($status !== Aerospike::OK) {
+            return $this->db->errorno();
+        }
     }
 }
 ?>

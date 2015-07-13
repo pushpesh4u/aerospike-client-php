@@ -27,13 +27,13 @@
  *******************************************************************************************************
  */
 void AS_DEFAULT_PUT(void *key, void *value, as_record *record,
-                    void *static_pool, uint32_t serializer_policy,
+                    void *static_pool, int8_t serializer_policy,
                     as_error *error_p TSRMLS_DC);
 void AS_LIST_PUT(void *key, void *value, void *store,
-                 void *static_pool, uint32_t serializer_policy,
+                 void *static_pool, int8_t serializer_policy,
                  as_error *error_p TSRMLS_DC);
 void AS_MAP_PUT(void *key, void *value, void *store,
-                void *static_pool, uint32_t serializer_policy,
+                void *static_pool, int8_t serializer_policy,
                 as_error *error_p TSRMLS_DC);
 bool AS_LIST_GET_CALLBACK(as_val *value, void *array);
 bool AS_MAP_GET_CALLBACK(as_val *key, as_val *value, void *array);
@@ -82,7 +82,7 @@ static void set_as_bytes(as_bytes *bytes,
 {
     if((!bytes) || (!bytes_string)) {
         DEBUG_PHP_EXT_ERROR("Unable to set as_bytes");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR, "Unable to set as_bytes");
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT, "Unable to set as_bytes");
         goto exit;
     }
 
@@ -90,7 +90,7 @@ static void set_as_bytes(as_bytes *bytes,
 
     if (!as_bytes_set(bytes, 0, bytes_string, bytes_string_len)) {
         DEBUG_PHP_EXT_ERROR("Unable to set as_bytes");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR, "Unable to set as_bytes");
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT, "Unable to set as_bytes");
     } else {
         as_bytes_set_type(bytes, bytes_type);
         PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_OK, DEFAULT_ERROR);
@@ -163,11 +163,11 @@ static void execute_user_callback(zend_fcall_info *user_callback_info,
     } else {
         if (serialize_flag) {
             DEBUG_PHP_EXT_ERROR("Unable to call user's registered serializer callback");
-            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                     "Unable to call user's registered serializer callback");
         } else {
             DEBUG_PHP_EXT_ERROR("Unable to call user's registered deserializer callback");
-            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                     "Unable to call user's registered deserializer callback");
         }
     }
@@ -209,7 +209,7 @@ static void serialize_based_on_serializer_policy(int32_t serializer_policy,
                 if (EG(exception)) {
                     smart_str_free(&buf);
                     DEBUG_PHP_EXT_ERROR("Unable to serialize using standard php serializer");
-                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                             "Unable to serialize using standard php serializer");
                     goto exit;
                 } else if (buf.c) {
@@ -221,7 +221,7 @@ static void serialize_based_on_serializer_policy(int32_t serializer_policy,
                 } else {
                     smart_str_free(&buf);
                     DEBUG_PHP_EXT_ERROR("Unable to serialize using standard php serializer");
-                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                             "Unable to serialize using standard php serializer");
                     goto exit;
                 }
@@ -235,7 +235,7 @@ static void serialize_based_on_serializer_policy(int32_t serializer_policy,
                  *     is added in aerospike-client-c
                  */
                  DEBUG_PHP_EXT_ERROR("Unable to serialize using standard json serializer");
-                 PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+                 PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                          "Unable to serialize using standard json serializer");
                  goto exit;
         case SERIALIZER_USER:
@@ -250,14 +250,14 @@ static void serialize_based_on_serializer_policy(int32_t serializer_policy,
                 }
             } else {
                 DEBUG_PHP_EXT_ERROR("No serializer callback registered");
-                PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+                PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                         "No serializer callback registered");
                 goto exit;
             }
             break;
         default:
             DEBUG_PHP_EXT_ERROR("Unsupported serializer");
-            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                     "Unsupported serializer");
             goto exit;
     }
@@ -287,7 +287,7 @@ static void unserialize_based_on_as_bytes_type(as_bytes  *bytes,
 
     if (!bytes || !(bytes->value)) {
         DEBUG_PHP_EXT_DEBUG("Invalid bytes");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR, "Invalid bytes");
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT, "Invalid bytes");
         goto exit;
     }
 
@@ -304,7 +304,7 @@ static void unserialize_based_on_as_bytes_type(as_bytes  *bytes,
                             (const unsigned char*) ((char *) bytes_val_p + bytes->size),
                             &var_hash TSRMLS_CC)) {
                     DEBUG_PHP_EXT_ERROR("Unable to unserialize bytes using standard php unserializer");
-                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                             "Unable to unserialize bytes using standard php unserializer");
                     PHP_VAR_UNSERIALIZE_DESTROY(var_hash);
                     goto exit;
@@ -323,7 +323,7 @@ static void unserialize_based_on_as_bytes_type(as_bytes  *bytes,
                     }
                 } else {
                     DEBUG_PHP_EXT_ERROR("No unserializer callback registered");
-                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+                    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                             "No unserializer callback registered");
                     goto exit;
                 }
@@ -331,7 +331,7 @@ static void unserialize_based_on_as_bytes_type(as_bytes  *bytes,
             break;
         default:
             DEBUG_PHP_EXT_ERROR("Unable to unserialize bytes");
-            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+            PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                     "Unable to unserialize bytes");
             goto exit;
     }
@@ -1331,7 +1331,7 @@ static void AS_DEFAULT_SET_ASSOC_LIST(void* outer_store, void* inner_store,
     if (!(as_record_set_list((as_record *)outer_store, (const char *)bin_name,
                     (as_list *) inner_store))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set record to a list");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set record to a list");
         goto exit;
     }
@@ -1359,7 +1359,7 @@ static void AS_DEFAULT_SET_ASSOC_MAP(void* outer_store, void* inner_store,
     if (!(as_record_set_map((as_record *)outer_store, (const char *)bin_name,
                     (as_map *) inner_store))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set record to a map");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set record to a map");
         goto exit;
     }
@@ -1388,7 +1388,7 @@ static void AS_MAP_SET_ASSOC_LIST(void* outer_store, void* inner_store,
                 as_hashmap_set((as_hashmap*)outer_store, bin_name,
                         (as_val*)((as_list *) inner_store)))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set list to as_hashmap");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set list to a hashmap");
         goto exit;
     }
@@ -1417,7 +1417,7 @@ static void AS_MAP_SET_ASSOC_MAP(void* outer_store, void* inner_store,
                 as_hashmap_set((as_hashmap*)outer_store, bin_name,
                     (as_val*)((as_map *) inner_store)))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set map to as_hashmap");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set map to as_hashmap");
         goto exit;
     }
@@ -1434,9 +1434,9 @@ exit:
  */
 
 static void AS_SET_ERROR_CASE(void* key, void* value, void* array,
-                              void* static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+                              void* static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
-    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR, "Error");
+    PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT, "Error");
 }
 
 /*
@@ -1454,7 +1454,7 @@ static void AS_SET_ERROR_CASE(void* key, void* value, void* array,
  *******************************************************************************************************
  */
 static void AS_LIST_PUT_APPEND_INT64(void* key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     if (AEROSPIKE_OK != (error_p->code =
                 as_arraylist_append_int64((as_arraylist *) array,
@@ -1485,7 +1485,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_LIST_PUT_APPEND_STR(void *key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     if (AEROSPIKE_OK != (error_p->code =
                 as_arraylist_append_str((as_arraylist *) array,
@@ -1516,7 +1516,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_LIST_PUT_APPEND_LIST(void *key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AS_LIST_PUT(key, value, array, static_pool, serializer_policy, error_p TSRMLS_CC);
 }
@@ -1536,7 +1536,7 @@ static void AS_LIST_PUT_APPEND_LIST(void *key, void *value, void *array,
  *******************************************************************************************************
  */
 static void AS_LIST_PUT_APPEND_MAP(void *key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AS_MAP_PUT(key, value, array, static_pool, serializer_policy, error_p TSRMLS_CC);
 }
@@ -1562,12 +1562,12 @@ static void AS_LIST_PUT_APPEND_MAP(void *key, void *value, void *array,
  *******************************************************************************************************
  */
 static void AS_DEFAULT_PUT_ASSOC_NIL(void* key, void* value, void* array,
-        void* static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void* static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     if (!as_record_set_nil((as_record *)array,
                     (const char *) key)) {
         DEBUG_PHP_EXT_DEBUG("Unable to set record to nil");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set record to nil");
         goto exit;
     }
@@ -1592,7 +1592,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_DEFAULT_PUT_ASSOC_BYTES(void* key, void* value,
-        void* array, void* static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void* array, void* static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     as_bytes     *bytes;
     GET_BYTES_POOL(bytes, static_pool, error_p, exit);
@@ -1605,7 +1605,7 @@ static void AS_DEFAULT_PUT_ASSOC_BYTES(void* key, void* value,
 
     if (!(as_record_set_bytes((as_record *)array, (const char *)key, bytes))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set record to bytes");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set record to bytes");
         goto exit;
     }
@@ -1630,12 +1630,12 @@ exit:
  *******************************************************************************************************
  */
 static void AS_DEFAULT_PUT_ASSOC_INT64(void* key, void* value, void* array,
-        void* static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void* static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     if (!(as_record_set_int64((as_record *)array, (const char*)key,
                     (int64_t) Z_LVAL_PP((zval**) value)))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set record to an int");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set record to int");
         goto exit;
     }
@@ -1660,12 +1660,12 @@ exit:
  *******************************************************************************************************
  */
 static void AS_DEFAULT_PUT_ASSOC_STR(void *key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     if (!(as_record_set_str((as_record *)array, (const char*)key,
                     (char *) Z_STRVAL_PP((zval**) value)))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set record to a string");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR,
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT,
                 "Unable to set record to a string");
         goto exit;
     }
@@ -1690,7 +1690,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_DEFAULT_PUT_ASSOC_LIST(void *key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AS_LIST_PUT(key, value, array, static_pool, serializer_policy, error_p TSRMLS_CC);
 }
@@ -1710,7 +1710,7 @@ static void AS_DEFAULT_PUT_ASSOC_LIST(void *key, void *value, void *array,
  *******************************************************************************************************
  */
 static void AS_DEFAULT_PUT_ASSOC_MAP(void *key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AS_MAP_PUT(key, value, array, static_pool, serializer_policy, error_p TSRMLS_CC);
 }
@@ -1736,7 +1736,7 @@ static void AS_DEFAULT_PUT_ASSOC_MAP(void *key, void *value, void *array,
  *******************************************************************************************************
  */
 static void AS_MAP_PUT_ASSOC_INT64(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     as_integer  *map_int;
     GET_INT_POOL(map_int, static_pool, error_p, exit);
@@ -1769,7 +1769,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_MAP_PUT_ASSOC_STR(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     as_string   *map_str;
     GET_STR_POOL(map_str, static_pool, error_p, exit);
@@ -1802,7 +1802,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_MAP_PUT_ASSOC_MAP(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AS_MAP_PUT(key, value, store, static_pool, serializer_policy, error_p TSRMLS_CC);
 }
@@ -1822,7 +1822,7 @@ static void AS_MAP_PUT_ASSOC_MAP(void *key, void *value, void *store,
  *******************************************************************************************************
  */
 static void AS_MAP_PUT_ASSOC_LIST(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AS_LIST_PUT(key, value, store, static_pool, serializer_policy, error_p TSRMLS_CC);
 }
@@ -1842,7 +1842,7 @@ static void AS_MAP_PUT_ASSOC_LIST(void *key, void *value, void *store,
  *******************************************************************************************************
  */
 static void AS_MAP_PUT_ASSOC_BYTES(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     as_bytes     *bytes;
     GET_BYTES_POOL(bytes, static_pool, error_p, exit);
@@ -1867,17 +1867,17 @@ exit:
 }
 
 static void AS_DEFAULT_PUT_ASSOC_ARRAY(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC);
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC);
 static void AS_MAP_PUT_ASSOC_ARRAY(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC);
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC);
 static void AS_LIST_PUT_APPEND_ARRAY(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC);
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC);
 static void AS_DEFAULT_PUT_ASSOC_BYTES(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC);
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC);
 static void AS_MAP_PUT_ASSOC_BYTES(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC);
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC);
 static void AS_LIST_PUT_APPEND_BYTES(void *key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC);
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC);
 
 /*
  *******************************************************************************************************
@@ -1900,7 +1900,7 @@ static void AS_LIST_PUT_APPEND_BYTES(void *key, void *value, void *array,
  *******************************************************************************************************
  */
 void AS_DEFAULT_PUT(void *key, void *value, as_record *record_p, void *static_pool,
-        uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AEROSPIKE_WALKER_SWITCH_CASE_PUT_DEFAULT_ASSOC(error_p, static_pool,
             key, ((zval**)value), record_p, exit, serializer_policy);
@@ -1923,7 +1923,7 @@ exit:
  *******************************************************************************************************
  */
 extern void AS_LIST_PUT(void *key, void *value, void *store, void *static_pool,
-        uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AEROSPIKE_WALKER_SWITCH_CASE_PUT_LIST_APPEND(error_p, static_pool,
             key, ((zval**)value), store, exit, serializer_policy);
@@ -1946,7 +1946,7 @@ exit:
  *******************************************************************************************************
  */
 void AS_MAP_PUT(void *key, void *value, void *store, void *static_pool,
-        uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     as_val *map_key = NULL;
     AEROSPIKE_WALKER_SWITCH_CASE_PUT_MAP_ASSOC(error_p, static_pool,
@@ -1970,7 +1970,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_DEFAULT_PUT_ASSOC_ARRAY(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AEROSPIKE_PROCESS_ARRAY(DEFAULT, ASSOC, exit, key, value, store,
             error_p, static_pool, serializer_policy);
@@ -1993,7 +1993,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_MAP_PUT_ASSOC_ARRAY(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AEROSPIKE_PROCESS_ARRAY(MAP, ASSOC, exit, key, value, store,
             error_p, static_pool, serializer_policy);
@@ -2016,7 +2016,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_LIST_PUT_APPEND_ARRAY(void *key, void *value, void *store,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     AEROSPIKE_PROCESS_ARRAY(LIST, APPEND, exit, key, value, store,
             error_p, static_pool, serializer_policy);
@@ -2039,7 +2039,7 @@ exit:
  *******************************************************************************************************
  */
 static void AS_LIST_PUT_APPEND_BYTES(void* key, void *value, void *array,
-        void *static_pool, uint32_t serializer_policy, as_error *error_p TSRMLS_DC)
+        void *static_pool, int8_t serializer_policy, as_error *error_p TSRMLS_DC)
 {
     as_bytes     *bytes;
     GET_BYTES_POOL(bytes, static_pool, error_p, exit);
@@ -2140,8 +2140,8 @@ do {                                                                            
 } while(0)    
 
 #define AS_CONFIG_ITER_MAP_SET_PORT(map_p, val)  map_p->transform_result.as_config_p->hosts[map_p->iter_count_u32].port = val
-#define AS_CONFIG_SET_USER(as_config_p, val)     strncpy(as_config_p->user, val, strlen(val))
-#define AS_CONFIG_SET_PASSWORD(as_config_p, val) strncpy(as_config_p->password, val, strlen(val))
+#define AS_CONFIG_SET_USER(global_user_p, val)   strncpy(global_user_p, val, strlen(val))
+#define AS_CONFIG_SET_PASSWORD(global_password_p, val) strncpy(global_password_p, val, strlen(val))
 #define AS_CONFIG_ITER_MAP_IS_ADDR_SET(map_p)    (map_p->transform_result.as_config_p->hosts[map_p->iter_count_u32].addr)
 #define AS_CONFIG_ITER_MAP_IS_PORT_SET(map_p)    (map_p->transform_result.as_config_p->hosts[map_p->iter_count_u32].port)
 
@@ -2156,18 +2156,16 @@ do {                                                                            
  *******************************************************************************************************
  */
 static as_status
-aerospike_transform_set_user_in_config(char *user_p, as_config *config_p)
+aerospike_transform_set_user_in_config(char *user_p, char *global_user_p)
 {
     as_status      status = AEROSPIKE_OK;
-    
-    if (!user_p || !config_p) {
-        status = AEROSPIKE_ERR;
+
+    if (!user_p && global_user_p) {
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
-    /*
-     * TODO: Uncomment below line to set the user_p in config_p
-     */
-    /*AS_CONFIG_SET_USER(config_p, user_p);*/
+
+    AS_CONFIG_SET_USER(global_user_p, user_p);
 
 exit:
     return status;
@@ -2184,18 +2182,16 @@ exit:
  *******************************************************************************************************
  */
 static as_status
-aerospike_transform_set_password_in_config(char *password_p, as_config *config_p)
+aerospike_transform_set_password_in_config(char *password_p, char *global_password_p)
 {
     as_status      status = AEROSPIKE_OK;
-    
-    if (!password_p || !config_p) {
-        status = AEROSPIKE_ERR;
+
+    if (!password_p && global_password_p) {
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
-    /*
-     * TODO: Uncomment below line to set the password_p in config_p
-     */
-    /*AS_CONFIG_SET_PASSWORD(config_p, password_p);*/
+
+    AS_CONFIG_SET_PASSWORD(global_password_p, password_p);
 
 exit:
     return status;
@@ -2289,7 +2285,7 @@ aerospike_transform_config_callback(HashTable* ht_p,
             key_p, key_len_u32 -1)) {
             if (((transform_zval_config_into *) data_p)->transform_result_type == TRANSFORM_INTO_AS_CONFIG) {
                 status = aerospike_transform_set_user_in_config(Z_STRVAL_PP(value_pp),
-                        (((transform_zval_config_into *) data_p)->transform_result).as_config_p);
+                        ((transform_zval_config_into *) data_p)->user);
             } else {
                 DEBUG_PHP_EXT_DEBUG("Skipping users as zval config is to be transformed into host_lookup");
                 status = AEROSPIKE_OK;
@@ -2299,7 +2295,7 @@ aerospike_transform_config_callback(HashTable* ht_p,
             PHP_AS_KEY_DEFINE_FOR_PASSWORD_LEN, key_p, key_len_u32 -1)) {
             if (((transform_zval_config_into *) data_p)->transform_result_type == TRANSFORM_INTO_AS_CONFIG) {
                 status = aerospike_transform_set_password_in_config(Z_STRVAL_PP(value_pp),
-                        (((transform_zval_config_into *) data_p)->transform_result).as_config_p);
+                        ((transform_zval_config_into *) data_p)->pass);
             } else {
                 DEBUG_PHP_EXT_DEBUG("Skipping password as zval config is to be transformed into host_lookup");
                 status = AEROSPIKE_OK;
@@ -2331,7 +2327,7 @@ aerospike_transform_check_and_set_config(HashTable* ht_p, zval** retdata_pp, /*a
     as_status      status = AEROSPIKE_OK;
 
     if (!ht_p) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2341,6 +2337,12 @@ aerospike_transform_check_and_set_config(HashTable* ht_p, zval** retdata_pp, /*a
                                 config_p))) {
         goto exit;
     }
+
+    /* Check and set user credentials */
+    char *user = ((transform_zval_config_into *)config_p)->user;
+    char *pass = ((transform_zval_config_into *)config_p)->pass;
+
+    as_config_set_user( ((transform_zval_config_into *)config_p)->transform_result.as_config_p, user, pass);
 
 exit:
     return status;
@@ -2377,14 +2379,14 @@ as_status aerospike_transform_addrport_callback(HashTable* ht_p,
     } else if (addrport_transform_iter_map_p->transform_result_type == TRANSFORM_INTO_ZVAL) {
         set_as_config = false;
     } else {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
     if ((!addrport_transform_iter_map_p) || (!value_pp) ||
             (set_as_config && (!addrport_transform_iter_map_p->transform_result.as_config_p)) ||
             (set_as_config && (!addrport_transform_iter_map_p->transform_result.ip_port_p))) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2393,10 +2395,10 @@ as_status aerospike_transform_addrport_callback(HashTable* ht_p,
             PHP_AS_KEY_DEFINE_FOR_ADDR_LEN, key_p, key_len_u32 - 1)) {
         if (set_as_config) {
             AS_CONFIG_ITER_MAP_SET_ADDR(addrport_transform_iter_map_p,
-                    Z_STRVAL_PP(value_pp));
+                    pestrndup(Z_STRVAL_PP(value_pp), Z_STRLEN_PP(value_pp), 1));
         } else {
-            strncpy(addrport_transform_iter_map_p->transform_result.ip_port_p,
-                    Z_STRVAL_PP(value_pp), strlen(Z_STRVAL_PP(value_pp)) + 1);
+            memcpy(addrport_transform_iter_map_p->transform_result.ip_port_p,
+                    Z_STRVAL_PP(value_pp), Z_STRLEN_PP(value_pp) + 1);
         }
     } else if (PHP_IS_LONG(key_data_type_u32) &&
              PHP_COMPARE_KEY(PHP_AS_KEY_DEFINE_FOR_PORT,
@@ -2460,7 +2462,7 @@ as_status aerospike_transform_array_callback(HashTable* ht_p,
     bool                                    set_as_config = false;
     
     if (PHP_IS_NOT_ARRAY(key_data_type_u32) || (!data_p) || (!retdata_pp)) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2474,7 +2476,7 @@ as_status aerospike_transform_array_callback(HashTable* ht_p,
         set_as_config = false;
         addrport_transform_iter_map_p.transform_result.ip_port_p = ip_port;
     } else {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2499,7 +2501,7 @@ as_status aerospike_transform_array_callback(HashTable* ht_p,
                     ip_port, strlen(ip_port), (void**)&tmp)) {
             if (0 != zend_hash_add((((config_transform_iter_map_t *) data_p)->transform_result).host_lookup_p,
                         ip_port, strlen(ip_port), (void *) ip_port, strlen(ip_port), NULL)) {
-                status = AEROSPIKE_ERR;
+                status = AEROSPIKE_ERR_CLIENT;
                 goto exit;
             }
         }
@@ -2530,7 +2532,7 @@ aerospike_transform_iteratefor_addr_port(HashTable* ht_p, void* data_p)
     config_transform_iter_map.iter_count_u32 = 0;
 
     if ((!ht_p) || (!data_p)) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2550,7 +2552,7 @@ aerospike_transform_iteratefor_addr_port(HashTable* ht_p, void* data_p)
     }
 
     if (0 == config_transform_iter_map.iter_count_u32) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2577,7 +2579,7 @@ aerospike_add_key_params(as_key* as_key_p, u_int32_t key_type, const char* names
     as_status      status = AEROSPIKE_OK;
 
     if ((!as_key_p) || (!namespace_p) || (!set_p) || (!key_pp)) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2595,18 +2597,18 @@ aerospike_add_key_params(as_key* as_key_p, u_int32_t key_type, const char* names
             if (!is_digest) {
                 as_key_init_str(as_key_p, namespace_p, set_p, Z_STRVAL_PP(key_pp));
             } else {
-                if (strlen(Z_STRVAL_PP(key_pp))) {
+                if (Z_STRLEN_PP(key_pp)) {
                     as_digest_value digest = {0};
-                    strncpy((char *) digest, Z_STRVAL_PP(key_pp), strlen(Z_STRVAL_PP(key_pp)));
+                    memcpy((char *) digest, Z_STRVAL_PP(key_pp), Z_STRLEN_PP(key_pp));
                     as_key_init_digest(as_key_p, namespace_p, set_p, digest);
                 } else {
-                    status = AEROSPIKE_ERR;
+                    status = AEROSPIKE_ERR_CLIENT;
                     goto exit;
                 }
             }
             break;
         default:
-            status = AEROSPIKE_ERR;
+            status = AEROSPIKE_ERR_CLIENT;
             break;
     }
 
@@ -2639,7 +2641,7 @@ aerospike_transform_putkey_callback(HashTable* ht_p,
     as_put_key_data_map*      as_put_key_data_map_p = (as_put_key_data_map *)(data_p);
 
     if (!as_put_key_data_map_p) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2687,7 +2689,7 @@ aerospike_transform_iterate_for_rec_key_params(HashTable* ht_p, as_key* as_key_p
     u_int64_t            index_u64 = 0;
 
     if ((!ht_p) || (!as_key_p) || (!as_key_p) || (!set_val_p)) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2700,7 +2702,7 @@ aerospike_transform_iterate_for_rec_key_params(HashTable* ht_p, as_key* as_key_p
     }
 
     if (!(put_key_data_map.namespace_p) || !(put_key_data_map.set_p) || !(put_key_data_map.key_pp) || (!key_record_p)) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -2740,14 +2742,14 @@ static void
 aerospike_transform_iterate_records(zval **record_pp,
                                     as_record* as_record_p,
                                     as_static_pool* static_pool,
-                                    uint32_t serializer_policy,
+                                    int8_t serializer_policy,
                                     as_error *error_p TSRMLS_DC)
 {
     char*              key = NULL;
 
     if ((!record_pp) || !(as_record_p) || !(static_pool)) {
         DEBUG_PHP_EXT_DEBUG("Unable to put record");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR, "Unable to put record");
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT, "Unable to put record");
         goto exit;
     }
 
@@ -2768,6 +2770,8 @@ exit:
  * @param error_p                   The C client's as_error to be set to the encountered error.
  * @param ttl_u64                   The ttl to be set for C client's as_record.
  * @param options_p                 The optional parameters to Aerospike::put()
+ * @param serializer_policy_p       The serializer_policy value set in AerospikeObject. Either from 
+ *                                  INI or user provided options array.
  *
  * @return AEROSPIKE_OK if success. Otherwise AEROSPIKE_x.
  *******************************************************************************************************
@@ -2778,10 +2782,11 @@ aerospike_transform_key_data_put(aerospike* as_object_p,
                                  as_key* as_key_p,
                                  as_error *error_p,
                                  u_int32_t ttl_u32,
-                                 zval* options_p TSRMLS_DC)
+                                 zval* options_p,
+                                 int8_t* serializer_policy_p TSRMLS_DC)
 {
     as_policy_write             write_policy;
-    uint32_t                    serializer_policy = -1;
+    int8_t                      serializer_policy = (serializer_policy_p) ? *serializer_policy_p : SERIALIZER_NONE;
     as_static_pool              static_pool = {0};
     as_record                   record;
     int16_t                     init_record = 0;
@@ -2789,15 +2794,16 @@ aerospike_transform_key_data_put(aerospike* as_object_p,
 
     if ((!record_pp) || (!as_key_p) || (!error_p) || (!as_object_p)) {
         DEBUG_PHP_EXT_DEBUG("Unable to put record");
-        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR, "Unable to put record");
+        PHP_EXT_SET_AS_ERR(error_p, AEROSPIKE_ERR_CLIENT, "Unable to put record");
         goto exit;
     }
 
     as_record_inita(&record, zend_hash_num_elements(Z_ARRVAL_PP(record_pp)));
     init_record = 1;
 
-    set_policy(NULL, &write_policy, NULL, NULL, NULL, NULL, NULL,
+    set_policy(&as_object_p->config, NULL, &write_policy, NULL, NULL, NULL, NULL, NULL,
             &serializer_policy, options_p, error_p TSRMLS_CC);
+
     if (AEROSPIKE_OK != (error_p->code)) {
         DEBUG_PHP_EXT_DEBUG("Unable to set policy");
         goto exit;
@@ -2885,6 +2891,29 @@ exit:
     return status;
 }
 
+extern as_status
+aerospike_get_key_digest(as_key *key_p, char *ns_p, char *set_p, zval *pk_p,
+        char **digest_pp TSRMLS_DC)
+{
+    as_status           status = AEROSPIKE_OK;
+
+    if (AEROSPIKE_OK != (status = aerospike_add_key_params(key_p, Z_TYPE_P(pk_p), ns_p, set_p, &pk_p, 0))) {
+        DEBUG_PHP_EXT_ERROR("Failed to initialize as_key");
+        goto exit;
+    }
+    
+    if (as_key_digest(key_p) && key_p->digest.init) {
+        *digest_pp = (char *) key_p->digest.value;
+    } else {
+        *digest_pp = NULL;
+        DEBUG_PHP_EXT_ERROR("Failed to compute digest");
+        status = AEROSPIKE_ERR_CLIENT;
+    }
+    
+exit:
+    return status;
+}
+
 /*
  *******************************************************************************************************
  * Function that returns no. of digits of a positive integer.
@@ -2924,26 +2953,27 @@ numPlaces (int num) {
  *******************************************************************************************************
  */
 extern as_status
-aerospike_init_php_key(char *ns_p, long ns_p_length, char *set_p,
+aerospike_init_php_key(as_config *as_config_p, char *ns_p, long ns_p_length, char *set_p,
         long set_p_length, zval *pk_p, bool is_digest, zval *return_value,
         as_key *record_key_p, zval *options_p, bool get_flag TSRMLS_DC)
 {
+    zval *number_zval = NULL;
     as_status       status = AEROSPIKE_OK;
 
     if (!ns_p || !set_p || !return_value) {
         DEBUG_PHP_EXT_DEBUG("Parameter error");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
     if (0 != add_assoc_stringl(return_value, PHP_AS_KEY_DEFINE_FOR_NS, ns_p, ns_p_length, 1)) {
         DEBUG_PHP_EXT_DEBUG("Unable to get namespace");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
     if ( 0 != add_assoc_stringl(return_value, PHP_AS_KEY_DEFINE_FOR_SET, set_p, set_p_length, 1)) {
         DEBUG_PHP_EXT_DEBUG("Unable to get set");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
     if (pk_p) {
@@ -2957,32 +2987,34 @@ aerospike_init_php_key(char *ns_p, long ns_p_length, char *set_p,
                 } else {
                     if (numPlaces(Z_LVAL_P(pk_p)) > AS_DIGEST_VALUE_SIZE) {
                         DEBUG_PHP_EXT_ERROR("Aerospike::initKey() digest max length exceeded");
-                        status = AEROSPIKE_ERR;
+                        status = AEROSPIKE_ERR_CLIENT;
                         goto exit;
                     } 
                     add_assoc_long(return_value, PHP_AS_KEY_DEFINE_FOR_DIGEST, Z_LVAL_P(pk_p));
                 }
                 break;
             case IS_STRING:
-                if (strlen(Z_STRVAL_P(pk_p)) == 0) {
+                if ((Z_STRLEN_P(pk_p)) == 0) {
                     DEBUG_PHP_EXT_ERROR("Aerospike::initKey() expects parameter 1-3 to be non-empty strings");
-                    status = AEROSPIKE_ERR;
+                    status = AEROSPIKE_ERR_CLIENT;
                     goto exit;
                 }
                 if (!is_digest) {
-                    add_assoc_string(return_value, PHP_AS_KEY_DEFINE_FOR_KEY, Z_STRVAL_P(pk_p), 1);
+                    add_assoc_stringl(return_value, PHP_AS_KEY_DEFINE_FOR_KEY, 
+                            Z_STRVAL_P(pk_p), Z_STRLEN_P(pk_p), 1);
                 } else {
-                    if (strlen(Z_STRVAL_P(pk_p)) > AS_DIGEST_VALUE_SIZE) {
+                    if ((Z_STRLEN_P(pk_p)) > AS_DIGEST_VALUE_SIZE) {
                         DEBUG_PHP_EXT_ERROR("Aerospike::initKey() digest max length exceeded");
-                        status = AEROSPIKE_ERR;
+                        status = AEROSPIKE_ERR_CLIENT;
                         goto exit;
                     }
-                    add_assoc_string(return_value, PHP_AS_KEY_DEFINE_FOR_DIGEST, Z_STRVAL_P(pk_p), 1);
+                    add_assoc_stringl(return_value, PHP_AS_KEY_DEFINE_FOR_DIGEST,
+                            Z_STRVAL_P(pk_p), Z_STRLEN_P(pk_p), 1);
                 }
                 break;
             default:
                 DEBUG_PHP_EXT_ERROR("Aerospike::initKey() expects parameter 1-3 to be non-empty strings");
-                status = AEROSPIKE_ERR;
+                status = AEROSPIKE_ERR_CLIENT;
                 goto exit;
         }
     } else {
@@ -2993,7 +3025,7 @@ aerospike_init_php_key(char *ns_p, long ns_p_length, char *set_p,
         zval **key_policy_pp = NULL;
 
         if (!record_key_p) {
-            status = AEROSPIKE_ERR;
+            status = AEROSPIKE_ERR_CLIENT;
             goto exit;
         }
 
@@ -3003,31 +3035,41 @@ aerospike_init_php_key(char *ns_p, long ns_p_length, char *set_p,
              * Always NULL in case of scan().
              */
             zend_hash_index_find(Z_ARRVAL_P(options_p), OPT_POLICY_KEY, (void **) &key_policy_pp);
+        } else {
+            /*
+             * Options not given, Then copy
+             * it from as_config.
+             */
+            if (as_config_p) {
+            MAKE_STD_ZVAL(number_zval);
+            ZVAL_LONG(number_zval, as_config_p->policies.read.key);
+            key_policy_pp = &number_zval;
+            }
         }
 
         if ((!record_key_p->valuep) || (get_flag && ((!key_policy_pp) || (key_policy_pp &&
                     Z_LVAL_PP(key_policy_pp) == AS_POLICY_KEY_DIGEST)))) {
             if (0 != add_assoc_null(return_value, PHP_AS_KEY_DEFINE_FOR_KEY)) {
                 DEBUG_PHP_EXT_DEBUG("Unable to get primary key of a record");
-                status = AEROSPIKE_ERR;
+                status = AEROSPIKE_ERR_CLIENT;
                 goto exit;
             } else {
                 goto exit;
             }
         }
-
         switch (((as_val*)(record_key_p->valuep))->type) {
             case AS_STRING:
-                if (0 != add_assoc_string(return_value, PHP_AS_KEY_DEFINE_FOR_KEY, record_key_p->value.string.value, 1)) {
+                if (0 != add_assoc_stringl(return_value, PHP_AS_KEY_DEFINE_FOR_KEY,
+                            record_key_p->value.string.value, strlen(record_key_p->value.string.value), 1)) {
                     DEBUG_PHP_EXT_DEBUG("Unable to get primary of a record");
-                    status = AEROSPIKE_ERR;
+                    status = AEROSPIKE_ERR_CLIENT;
                     goto exit;
                 }
                 break;
             case AS_INTEGER:
                 if (0 != add_assoc_long(return_value, PHP_AS_KEY_DEFINE_FOR_KEY, record_key_p->value.integer.value)) {
                     DEBUG_PHP_EXT_DEBUG("Unable to get primary of a record");
-                    status = AEROSPIKE_ERR;
+                    status = AEROSPIKE_ERR_CLIENT;
                     goto exit;
                 }
                 break;
@@ -3037,6 +3079,10 @@ aerospike_init_php_key(char *ns_p, long ns_p_length, char *set_p,
     }
 
 exit:
+    if (number_zval) {
+        zval_ptr_dtor(&number_zval);
+    }
+
     return status;
 }
 
@@ -3073,22 +3119,22 @@ static char* bin2hex(const unsigned char *old, const int oldlen)
  *******************************************************************************************************
  */
 static as_status
-aerospike_get_record_key_digest(as_record* get_record_p, as_key *record_key_p, zval* key_container_p, zval* options_p, bool get_flag TSRMLS_DC)
+aerospike_get_record_key_digest(as_config *as_config_p, as_record* get_record_p, as_key *record_key_p, zval* key_container_p, zval* options_p, bool get_flag TSRMLS_DC)
 {
     as_status                  status = AEROSPIKE_OK;
     php_unserialize_data_t     var_hash;
     //int8_t*                    hex_str_p = NULL;
 
     if (!get_record_p || !record_key_p || !key_container_p) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
-    if (AEROSPIKE_OK != (status = aerospike_init_php_key(record_key_p->ns, strlen(record_key_p->ns),
+    if (AEROSPIKE_OK != (status = aerospike_init_php_key(as_config_p, record_key_p->ns, strlen(record_key_p->ns),
             record_key_p->set, strlen(record_key_p->set), NULL, false,
             key_container_p, record_key_p, options_p, get_flag TSRMLS_CC))) {
         DEBUG_PHP_EXT_DEBUG("Unable to get key of a record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -3097,15 +3143,16 @@ aerospike_get_record_key_digest(as_record* get_record_p, as_key *record_key_p, z
      */
     /*if (NULL == (hex_str_p = bin2hex(((as_key_digest(record_key_p))->value), AS_DIGEST_VALUE_SIZE))) {
         DEBUG_PHP_EXT_DEBUG("Unable to allocate memory for digest");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }*/
 
-    if (0 != add_assoc_stringl(key_container_p, PHP_AS_KEY_DEFINE_FOR_DIGEST,
-                ((char *)(as_key_digest(record_key_p))->value),
-                AS_DIGEST_VALUE_SIZE, 1)) {
+    if (record_key_p->digest.init && (0 != add_assoc_stringl(key_container_p,
+                    PHP_AS_KEY_DEFINE_FOR_DIGEST,
+                    (char *) record_key_p->digest.value,
+                    AS_DIGEST_VALUE_SIZE, 1))) {
         DEBUG_PHP_EXT_DEBUG("Unable to get digest of a key");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -3134,18 +3181,18 @@ aerospike_get_record_metadata(as_record* get_record_p, zval* metadata_container_
 
     if (!get_record_p) {
         DEBUG_PHP_EXT_DEBUG("Incorrect Record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
     if (0 != add_assoc_long(metadata_container_p, PHP_AS_RECORD_DEFINE_FOR_TTL, get_record_p->ttl)) {
         DEBUG_PHP_EXT_DEBUG("Unable to get time to live of a record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
 
     }
     if (0 != add_assoc_long(metadata_container_p, PHP_AS_RECORD_DEFINE_FOR_GENERATION, get_record_p->gen)) {
         DEBUG_PHP_EXT_DEBUG("Unable to get generation of a record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
@@ -3168,7 +3215,8 @@ exit:
  *******************************************************************************************************
  */
 extern as_status
-aerospike_get_key_meta_bins_of_record(as_record* get_record_p, as_key* record_key_p, zval* outer_container_p, zval* options_p, bool get_flag TSRMLS_DC)
+aerospike_get_key_meta_bins_of_record(as_config *as_config_p, as_record* get_record_p,
+        as_key* record_key_p, zval* outer_container_p, zval* options_p, bool get_flag TSRMLS_DC)
 {
     as_status           status = AEROSPIKE_OK;
     zval*               metadata_container_p = NULL;
@@ -3177,13 +3225,13 @@ aerospike_get_key_meta_bins_of_record(as_record* get_record_p, as_key* record_ke
 
     if (!get_record_p || !record_key_p || ! outer_container_p) {
         DEBUG_PHP_EXT_DEBUG("Unable to get a record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit; 
     }
 
     MAKE_STD_ZVAL(key_container_p);
     array_init(key_container_p);
-    status = aerospike_get_record_key_digest(get_record_p, record_key_p, key_container_p, options_p, get_flag TSRMLS_CC);
+    status = aerospike_get_record_key_digest(as_config_p, get_record_p, record_key_p, key_container_p, options_p, get_flag TSRMLS_CC);
     if (status != AEROSPIKE_OK) {
         DEBUG_PHP_EXT_DEBUG("Unable to get key and digest for record");
         goto exit;
@@ -3199,12 +3247,12 @@ aerospike_get_key_meta_bins_of_record(as_record* get_record_p, as_key* record_ke
 
     if (0 != add_assoc_zval(outer_container_p, PHP_AS_KEY_DEFINE_FOR_KEY, key_container_p)) {
         DEBUG_PHP_EXT_DEBUG("Unable to get key of a record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
     if (0 != add_assoc_zval(outer_container_p, PHP_AS_RECORD_DEFINE_FOR_METADATA, metadata_container_p)) {
         DEBUG_PHP_EXT_DEBUG("Unable to get metadata of a record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 exit:
@@ -3260,22 +3308,24 @@ aerospike_transform_get_record(Aerospike_object* aerospike_obj_p,
     foreach_record_callback_udata.obj = aerospike_obj_p;
 
     if ((!as_object_p) || (!get_rec_key_p) || (!error_p) || (!outer_container_p)) {
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
-    set_policy(&read_policy, NULL, NULL, NULL, NULL, NULL, NULL,
-            NULL, options_p, error_p TSRMLS_CC);
+    set_policy(&as_object_p->config, &read_policy, NULL, NULL, NULL, NULL,
+            NULL, NULL, NULL, options_p, error_p TSRMLS_CC);
     if (AEROSPIKE_OK != (status = (error_p->code))) {
         DEBUG_PHP_EXT_DEBUG("Unable to set policy");
         goto exit;
     }
 
-    if (bins_p != NULL && (AEROSPIKE_OK != (status =
+    if (bins_p != NULL) {
+        if (AEROSPIKE_OK != (status =
                     aerospike_transform_filter_bins_exists(as_object_p,
                             Z_ARRVAL_P(bins_p), &get_record, error_p,
-                                    get_rec_key_p, &read_policy)))) {
-        goto exit;
+                                    get_rec_key_p, &read_policy))) {
+            goto exit;
+        }
     } else if (AEROSPIKE_OK != (status = aerospike_key_get(as_object_p, error_p,
                     &read_policy, get_rec_key_p, &get_record))) {
         goto exit;
@@ -3286,15 +3336,15 @@ aerospike_transform_get_record(Aerospike_object* aerospike_obj_p,
         goto exit;
     }
 
-    if (AEROSPIKE_OK != (status = aerospike_get_key_meta_bins_of_record(get_record, get_rec_key_p, outer_container_p, options_p, true TSRMLS_CC))) {
+    if (AEROSPIKE_OK != (status = aerospike_get_key_meta_bins_of_record(&as_object_p->config, get_record, get_rec_key_p, outer_container_p, options_p, true TSRMLS_CC))) {
         DEBUG_PHP_EXT_DEBUG("Unable to get record key and metadata");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 
     if (0 != add_assoc_zval(outer_container_p, PHP_AS_RECORD_DEFINE_FOR_BINS, get_record_p))    {
         DEBUG_PHP_EXT_DEBUG("Unable to get a record");
-        status = AEROSPIKE_ERR;
+        status = AEROSPIKE_ERR_CLIENT;
         goto exit;
     }
 

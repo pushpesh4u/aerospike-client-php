@@ -43,7 +43,11 @@
  * MACROS FOR MAX STORE SIZE.
  *******************************************************************************************************
  */
-#define AS_MAX_STORE_SIZE 1024
+#ifdef __APPLE__
+    #define AS_MAX_STORE_SIZE 2560
+#else
+    #define AS_MAX_STORE_SIZE 4096
+#endif
 #define AS_MAX_LIST_SIZE AS_MAX_STORE_SIZE
 #define AS_MAX_MAP_SIZE AS_MAX_STORE_SIZE
 
@@ -97,6 +101,7 @@
 #define BIN "bin"
 #define OP "op"
 #define VAL "val"
+#define INDEX_TYPE "index_type"
 
 /*
  *******************************************************************************************************
@@ -195,6 +200,7 @@ typedef struct Aerospike_object {
     bool is_persistent;
     aerospike_ref *as_ref_p;
     u_int16_t is_conn_16;
+    int8_t serializer_opt;
 #ifdef ZTS
     void ***ts;
 #endif
@@ -274,9 +280,12 @@ extern uint32_t              is_user_deserializer_registered;
  ****************************************************************************
  */
 typedef struct _userland_callback {
-    zend_fcall_info *fci_p;
-    zend_fcall_info_cache *fcc_p;
+    zend_fcall_info fci;
+    zend_fcall_info_cache fcc;
     Aerospike_object *obj;
+#ifdef ZTS
+    void ***ts;
+#endif
 } userland_callback;
 
 /*
@@ -310,6 +319,8 @@ typedef union _transform_result {
 typedef struct _transform_zval_config_into {
     enum config_transform_result_type       transform_result_type;
     transform_result_t                      transform_result;
+    char                                    user[AS_USER_SIZE];
+    char                                    pass[AS_PASSWORD_HASH_SIZE];
 } transform_zval_config_into;
 
 extern bool
@@ -478,7 +489,8 @@ aerospike_transform_key_data_put(aerospike* as_object_p,
                                  as_key* as_key_p,
                                  as_error *error_p,
                                  u_int32_t ttl_u32,
-                                 zval* options_p TSRMLS_DC);
+                                 zval* options_p,
+                                 int8_t* serializer_policy_p TSRMLS_DC);
 
 extern as_status
 aerospike_transform_get_record(Aerospike_object* aerospike_object_p,
@@ -489,12 +501,16 @@ aerospike_transform_get_record(Aerospike_object* aerospike_object_p,
                                zval* bins_p TSRMLS_DC);
 
 extern as_status
-aerospike_init_php_key(char *ns_p, long ns_p_length, char *set_p,
+aerospike_get_key_digest(as_key *key_p, char *ns_p, char *set_p,
+        zval *pk_p, char **digest_pp TSRMLS_DC);
+
+extern as_status
+aerospike_init_php_key(as_config *as_config_p, char *ns_p, long ns_p_length, char *set_p,
         long set_p_length, zval *pk_p, bool is_digest, zval *return_value,
         as_key *record_key_p, zval *options_p, bool get_flag TSRMLS_DC);
 
 extern void AS_LIST_PUT(void *key, void *value, void *store, void *static_pool,
-        uint32_t serializer_policy, as_error *error_p TSRMLS_DC);
+        int8_t serializer_policy, as_error *error_p TSRMLS_DC);
 /*
  *******************************************************************************************************
  * Extern declarations of record operation functions.
@@ -519,7 +535,6 @@ aerospike_record_operations_general(Aerospike_object* aerospike_object_p,
                                 char* bin_name_p,
                                 char* str,
                                 u_int64_t offset,
-                                u_int64_t initial_value,
                                 u_int64_t time_to_live,
                                 u_int64_t operation);
 
@@ -545,7 +560,8 @@ aerospike_php_exists_metadata(Aerospike_object*  aerospike_object_p,
                               as_error *error_p);
 
 extern as_status
-aerospike_get_key_meta_bins_of_record(as_record* get_record_p,
+aerospike_get_key_meta_bins_of_record(as_config *as_config_p,
+        as_record* get_record_p,
         as_key* record_key_p, zval* outer_container_p,
         zval* options_p, bool get_flag TSRMLS_DC);
 
@@ -600,7 +616,7 @@ aerospike_udf_deregister(Aerospike_object* aerospike_obj_p, as_error* error_p,
 extern as_status
 aerospike_udf_apply(Aerospike_object* aerospike_obj_p, as_key* as_key_p,
         as_error* error_p, char* module_p, char* function_p, zval** args_pp,
-        zval* return_value_p, zval* options_p);
+        zval* return_value_p, zval* options_p, int8_t* serializer_policy_p);
 
 extern as_status
 aerospike_list_registered_udf_modules(Aerospike_object* aerospike_obj_p,
@@ -620,12 +636,12 @@ aerospike_get_registered_udf_module_code(Aerospike_object* aerospike_obj_p,
 extern as_status
 aerospike_scan_run(aerospike* as_object_p, as_error* error_p,
         char* namespace_p, char* set_p, userland_callback* user_func_p,
-        HashTable* bins_ht_p, zval* options_p TSRMLS_DC);
+        HashTable* bins_ht_p, zval* options_p, int8_t* serializer_policy_p TSRMLS_DC);
 
 extern as_status
 aerospike_scan_run_background(aerospike* as_object_p, as_error* error_p,
         char *module_p, char *function_p, zval** args_pp, char* namespace_p,
-        char* set_p, zval* scan_id_p, zval *options_p, bool block TSRMLS_DC);
+        char* set_p, zval* scan_id_p, zval *options_p, bool block, int8_t* serializer_policy_p TSRMLS_DC);
 
 extern as_status
 aerospike_scan_get_info(aerospike* as_object_p, as_error* error_p,
@@ -645,7 +661,7 @@ extern as_status
 aerospike_query_aggregate(aerospike* as_object_p, as_error* error_p,
         const char* module_p, const char* function_p, zval** args_pp,
         char* namespace_p, char* set_p, HashTable* bins_ht_p,
-        HashTable* predicate_ht_p, zval* return_value_p, zval* options_p TSRMLS_DC);
+        HashTable* predicate_ht_p, zval* return_value_p, zval* options_p, int8_t* serializer_policy_p TSRMLS_DC);
 
 /*
  ******************************************************************************************************
@@ -654,8 +670,8 @@ aerospike_query_aggregate(aerospike* as_object_p, as_error* error_p,
  */
 extern as_status
 aerospike_index_create_php(aerospike* as_object_p, as_error *error_p,
-        char* ns_p, char* set_p, char* bin_p, uint32_t type,
-        char *name_p, zval* options_p TSRMLS_DC);
+        char* ns_p, char* set_p, char* bin_p, char *name_p,
+		uint32_t type, uint32_t datatype, zval* options_p TSRMLS_DC);
 
 extern as_status
 aerospike_index_remove_php(aerospike* as_object_p, as_error *error_p,
@@ -699,10 +715,10 @@ aerospike_batch_operations_get_many(aerospike* as_object_p, as_error* as_error_p
  ******************************************************************************************************
  */
 extern void
-set_policy(as_policy_read *read_policy_p, as_policy_write *write_policy_p,
-        as_policy_operate *operate_policy_p, as_policy_remove *remove_policy_p,
-        as_policy_info *info_policy_p, as_policy_scan *scan_policy_p,
-        as_policy_query *query_policy_p, uint32_t *serializer_policy_p,
-        zval *options_p, as_error *error_p TSRMLS_DC);
+set_policy(as_config* as_config_p, as_policy_read *read_policy_p,
+        as_policy_write *write_policy_p, as_policy_operate *operate_policy_p,
+        as_policy_remove *remove_policy_p, as_policy_info *info_policy_p,
+        as_policy_scan *scan_policy_p, as_policy_query *query_policy_p,
+        int8_t *serializer_policy_p, zval *options_p, as_error *error_p TSRMLS_DC);
 
 #endif
